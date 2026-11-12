@@ -1,0 +1,10 @@
+description: "Swift implementation of the Resource Interchange File Format (RIFF) and its WAVE form: sampled sound to and from bytes."
+topics:
+  - standards
+  - microsoft
+  - riff
+  - wav
+  - audio
+homepage: "https://swift-institute.org"
+readme:
+  family: E
