@@ -7,8 +7,11 @@ enum `RIFF Tests` {}
 extension `RIFF Tests` {
     fileprivate static func bytes(_ values: [UInt8]) -> [Byte] { values.map(Byte.init(bitPattern:)) }
 
-    fileprivate static func identifier(_ text: String) throws -> RIFF.Identifier {
-        try #require(RIFF.Identifier(text))
+    fileprivate static func identifier(_ text: String) -> RIFF.Identifier {
+        guard let identifier = RIFF.Identifier(text) else {
+            preconditionFailure("A test identifier is four bytes")
+        }
+        return identifier
     }
 
     /// A one-channel, 8000-a-second, sixteen-bit file of the two samples 1 and -2, byte for byte.
@@ -37,10 +40,10 @@ extension `RIFF Tests` {
         @Test
         func `A form is written as its type and its chunks, each padded to an even length`() throws {
             let form = RIFF.Form(
-                type: try `RIFF Tests`.identifier("TEST"),
+                type: `RIFF Tests`.identifier("TEST"),
                 chunks: [
-                    RIFF.Chunk(try `RIFF Tests`.identifier("odd "), `RIFF Tests`.bytes([1, 2, 3])),
-                    RIFF.Chunk(try `RIFF Tests`.identifier("even"), `RIFF Tests`.bytes([4, 5])),
+                    RIFF.Chunk(`RIFF Tests`.identifier("odd "), `RIFF Tests`.bytes([1, 2, 3])),
+                    RIFF.Chunk(`RIFF Tests`.identifier("even"), `RIFF Tests`.bytes([4, 5])),
                 ]
             )
             let expected: [UInt8] = [
@@ -57,7 +60,7 @@ extension `RIFF Tests` {
                 RIFF.Form(type: .wave, chunks: []),
                 RIFF.Form(type: .wave, chunks: [RIFF.Chunk(.data, [])]),
                 RIFF.Form(
-                    type: try `RIFF Tests`.identifier("TEST"),
+                    type: `RIFF Tests`.identifier("TEST"),
                     chunks: (0..<7).map { RIFF.Chunk(.data, `RIFF Tests`.bytes((0..<$0).map { UInt8($0 * 37 % 251) })) }
                 ),
             ]
@@ -146,7 +149,7 @@ extension `RIFF Tests` {
         func `A form that is not a sound, or lacks its format or its data, is refused`() throws {
             let wave = try RIFF.WAVE(rate: 8000, channels: 1, integers: [1, -2])
             var form = wave.form
-            form.type = try `RIFF Tests`.identifier("AVI ")
+            form.type = `RIFF Tests`.identifier("AVI ")
             #expect(throws: RIFF.WAVE.Error.form) { try RIFF.WAVE(form) }
             #expect(throws: RIFF.WAVE.Error.format) { try RIFF.WAVE(RIFF.Form(type: .wave, chunks: [wave.form.chunks[1]])) }
             #expect(throws: RIFF.WAVE.Error.format) {

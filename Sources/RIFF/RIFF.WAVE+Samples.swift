@@ -32,7 +32,7 @@ extension RIFF.WAVE {
     /// Bytes past the last whole sample are left out.
     public var integers: [Int16]? {
         guard format.encoding == .integer, format.bits == 16 else { return nil }
-        return stride(from: 0, to: data.count - 1, by: 2).compactMap { offset in
+        return stride(from: 0, to: data.count / 2 * 2, by: 2).compactMap { offset in
             Int16(bytes: data[offset..<(offset + 2)], endianness: .little)
         }
     }
@@ -41,7 +41,7 @@ extension RIFF.WAVE {
     /// Bytes past the last whole sample are left out.
     public var floats: [Float]? {
         guard format.encoding == .float, format.bits == 32 else { return nil }
-        return stride(from: 0, to: data.count - 3, by: 4).compactMap { offset in
+        return stride(from: 0, to: data.count / 4 * 4, by: 4).compactMap { offset in
             UInt32(bytes: data[offset..<(offset + 4)], endianness: .little).map(Float.init(bitPattern:))
         }
     }
