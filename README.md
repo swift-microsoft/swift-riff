@@ -1,16 +1,6 @@
 # swift-riff
 
-Use this package to read or write a `.wav` file, or any other file in the Resource Interchange File Format, as bytes. `RIFF.Form` is a whole file: a four-byte form type and a list of `RIFF.Chunk`s, each a four-byte `RIFF.Identifier` and its data. `RIFF.serialize` and `RIFF.parse` take a form to bytes and back. `RIFF.WAVE` is the WAVE form on top of that: a `Format` (encoding, channels, rate, bits) and the bytes of the samples, with sixteen-bit whole numbers and thirty-two-bit floating point ready as arrays. Reading and writing the file itself is the caller's.
-
-```swift
-import RIFF
-
-let sound = try RIFF.WAVE(rate: 48000, channels: 2, floats: [0, 0, 0.5, -0.5])
-let file: [Byte] = try sound.serialize()
-let back = try RIFF.WAVE(RIFF.parse(file))  // == sound
-```
-
-The format follows the Multimedia Programming Interface and Data Specifications 1.0 (IBM and Microsoft, 1991) and, for encodings other than whole numbers, the New Multimedia Data Types and Data Techniques revision (Microsoft, 1994).
+Use this package to read or write a `.wav` file, or any other file in the Resource Interchange File Format, as bytes. `RIFF.Form` is a whole file: a four-byte form type and a list of `RIFF.Chunk`s, each a four-byte `RIFF.Identifier` and its data. `RIFF.serialize` and `RIFF.parse` take a form to bytes and back. `RIFF.WAVE` is the WAVE form on top of that: a `Format` (encoding, channels, rate, bits) and the bytes of the samples, with sixteen-bit whole numbers and thirty-two-bit floating point ready as arrays. Reading and writing the file itself is the caller's. The format follows the Multimedia Programming Interface and Data Specifications 1.0 (IBM and Microsoft, 1991) and, for encodings other than whole numbers, the New Multimedia Data Types and Data Techniques revision (Microsoft, 1994).
 
 ## Laws
 
