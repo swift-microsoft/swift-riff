@@ -10,5 +10,9 @@ extension RIFF.WAVE {
         case channels
         /// A number of samples that does not fill every channel equally.
         case count
+        /// A whole-number width of no bits or more than thirty-two.
+        case bits
+        /// A whole-number sample that does not fit its bytes.
+        case range
     }
 }

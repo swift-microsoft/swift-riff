@@ -176,5 +176,84 @@ extension `RIFF Tests` {
             #expect(try RIFF.WAVE(RIFF.parse(wave.serialize())) == wave)
             #expect(wave.integers == nil && wave.floats == nil && wave.count == 3)
         }
+
+        @Test
+        func `Whole numbers of every width come back as written, extremes included`() throws {
+            let cases: [(bits: UInt16, wholes: [Int32])] = [
+                (8, [0, 1, -1, 127, -128]),
+                (12, [0, 1, -1, 32767, -32768]),
+                (16, [0, 1, -1, 32767, -32768]),
+                (24, [0, 1, -1, 8_388_607, -8_388_608, -1000, -65536]),
+                (32, [0, 1, -1, .max, .min]),
+            ]
+            for (bits, wholes) in cases {
+                let wave = try RIFF.WAVE(rate: 8000, channels: 1, bits: bits, wholes: wholes)
+                #expect(wave.data.count == wholes.count * (Int(bits + 7) / 8))
+                #expect(wave.wholes == wholes)
+                #expect(try RIFF.WAVE(RIFF.parse(wave.serialize())) == wave)
+            }
+        }
+
+        @Test
+        func `Eight-bit whole numbers are written unsigned around 128`() throws {
+            let wave = try RIFF.WAVE(rate: 8000, channels: 1, bits: 8, wholes: [0, -128, 127, -1])
+            #expect(wave.data == `RIFF Tests`.bytes([128, 0, 255, 127]))
+            let read = RIFF.WAVE(format: wave.format, data: `RIFF Tests`.bytes([128, 0, 255]))
+            #expect(read.wholes == [0, -128, 127])
+        }
+
+        @Test
+        func `Twenty-four-bit samples are read least significant byte first, sign-extended`() throws {
+            let wave = RIFF.WAVE(
+                format: RIFF.WAVE.Format(encoding: .integer, channels: 1, rate: 8000, bits: 24),
+                data: `RIFF Tests`.bytes([0x01, 0x02, 0x03, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0x7F, 0x18, 0xFC, 0xFF, 0x09])
+            )
+            #expect(wave.wholes == [0x030201, -1, -8_388_608, 8_388_607, -1000])
+        }
+
+        @Test
+        func `A twenty-four-bit stereo sound is written and read back`() throws {
+            let wholes: [Int32] = [0, -1, 8_388_607, -8_388_608, 123_456, -654_321]
+            let wave = try RIFF.WAVE(rate: 96000, channels: 2, bits: 24, wholes: wholes)
+            #expect(wave.format.alignment == 6 && wave.count == 3)
+            let read = try RIFF.WAVE(RIFF.parse(wave.serialize()))
+            #expect(read.format == RIFF.WAVE.Format(encoding: .integer, channels: 2, rate: 96000, bits: 24))
+            #expect(read.wholes == wholes)
+        }
+
+        @Test
+        func `Whole numbers agree with sixteen-bit integers`() throws {
+            let wave = try RIFF.WAVE(rate: 44100, channels: 2, integers: [0, 1, -1, .max, .min, 12345])
+            #expect(wave.wholes == wave.integers?.map(Int32.init))
+            #expect(try RIFF.WAVE(rate: 44100, channels: 2, bits: 16, wholes: [0, 1, -1, 32767, -32768, 12345]) == wave)
+            #expect(try RIFF.WAVE(rate: 8000, channels: 1, floats: [1]).wholes == nil)
+        }
+
+        @Test
+        func `Whole numbers need a width of one to thirty-two bits and samples that fit it`() throws {
+            #expect(throws: RIFF.WAVE.Error.bits) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 0, wholes: []) }
+            #expect(throws: RIFF.WAVE.Error.bits) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 33, wholes: []) }
+            #expect(throws: RIFF.WAVE.Error.channels) { try RIFF.WAVE(rate: 8000, channels: 0, bits: 16, wholes: []) }
+            #expect(throws: RIFF.WAVE.Error.count) { try RIFF.WAVE(rate: 8000, channels: 2, bits: 16, wholes: [1]) }
+            #expect(throws: RIFF.WAVE.Error.range) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 8, wholes: [128]) }
+            #expect(throws: RIFF.WAVE.Error.range) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 8, wholes: [-129]) }
+            #expect(throws: RIFF.WAVE.Error.range) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 16, wholes: [32768]) }
+            #expect(throws: RIFF.WAVE.Error.range) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 24, wholes: [-8_388_609]) }
+            #expect(throws: RIFF.WAVE.Error.range) { try RIFF.WAVE(rate: 8000, channels: 1, bits: 20, wholes: [8_388_608]) }
+        }
+
+        @Test
+        func `Sixty-four-bit floating point comes back bit for bit`() throws {
+            let payload = Double(bitPattern: 0x7FF8_0000_DEAD_BEEF)
+            let doubles: [Double] = [0, -0.0, 1, -1, 0.1, .leastNonzeroMagnitude, -.infinity, payload]
+            let wave = try RIFF.WAVE(rate: 48000, channels: 2, doubles: doubles)
+            #expect(wave.format.bits == 64 && wave.format.alignment == 16 && wave.count == 4)
+            let read = try RIFF.WAVE(RIFF.parse(wave.serialize()))
+            #expect(read == wave)
+            #expect(read.doubles?.map(\.bitPattern) == doubles.map(\.bitPattern))
+            #expect(read.floats == nil && read.wholes == nil && wave.form.chunks.map(\.identifier) == [.format, .fact, .data])
+            #expect(throws: RIFF.WAVE.Error.channels) { try RIFF.WAVE(rate: 8000, channels: 0, doubles: []) }
+            #expect(throws: RIFF.WAVE.Error.count) { try RIFF.WAVE(rate: 8000, channels: 2, doubles: [1]) }
+        }
     }
 }
